@@ -1,0 +1,130 @@
+buildscript {
+    repositories {
+        mavenCentral()
+        jcenter()
+        maven {
+            name = "forge"
+            url = "http://files.minecraftforge.net/maven"
+        }
+        maven {
+            name = "sonatype"
+            url = "https://oss.sonatype.org/content/repositories/snapshots/"
+        }
+    }
+    dependencies {
+        classpath 'net.minecraftforge.gradle:ForgeGradle:1.2-SNAPSHOT'
+        classpath 'com.anatawa12:compile-time-constant:1.0.1'
+        classpath "com.github.jengelman.gradle.plugins:shadow:4.0.4"
+    }
+    tasks.withType(JavaCompile) {
+        options.encoding = "UTF-8"
+    }
+}
+
+apply plugin: 'java'
+apply plugin: 'forge'
+apply plugin: "com.github.johnrengelman.shadow"
+apply plugin: 'com.anatawa12.compile-time-constant'
+
+sourceCompatibility = 1.8
+targetCompatibility = 1.8
+
+tasks.withType(Jar) { compileJava.options.encoding = 'UTF-8' }
+
+configurations {
+    jarInJar
+    compile.extendsFrom jarInJar
+}
+
+version = "$VERSION"
+group = "com.github.yuitosaito.resourcemod"
+archivesBaseName = "Image-Resource-Mod"
+
+minecraft {
+    version = "1.7.10-10.13.4.1614-1.7.10"
+    runDir = "eclipse"
+}
+
+dependencies {
+    shadow group: 'org.apache.xmlgraphics', name: 'batik-transcoder', version: '1.13'
+}
+
+createCompileTimeConstant {
+    constantsClass = "com.github.yuitosaito.resourcemod.Constants"
+    values version: version.toString()
+}
+
+/*
+jar {
+    configurations.jarInJar.each {dep ->
+        from(dep){
+            into "lib"
+        }
+    }
+    manifest.attributes(
+            // 依存する外部Jarはlibs/下にあるものとしてClass－Pathを設定します
+            'Class-Path': configurations.jarInJar.collect { 'lib/' + it.name }.join(' ')
+    )
+/*
+    configurations.jarInJar.each {dep ->
+        from(dep){
+            into "com/github/yuitosaito/libs"
+        }
+    }*/
+//}
+
+shadowJar {
+    archiveName = tasks.jar.archiveName
+    configurations = [project.configurations.shadow]
+
+    exclude 'META-INF', 'META-INF/**', 'license', 'license/**', 'org/apache/batik/util/resources/XMLResourceDescriptor.properties'
+    //relocate  "PK: javax javax"
+    //srgExtra "PK: java_cup com/github/yuitosaito/libs/java_cup"
+    //relocate  "PK: java_cup java_cup"
+    relocate "org.apache.batik", "com.github.yuitosaito.libs.org.apache.batik"
+    relocate "org.apache.bcel", "com.github.yuitosaito.libs.org.apache.bcel"
+    relocate "org.apache.commons", "com.github.yuitosaito.libs.org.apache.commons"
+    relocate "org.apache.regexp", "com.github.yuitosaito.libs.org.apache.regexp"
+    relocate "org.apache.xalan", "com.github.yuitosaito.libs.org.apache.xalan"
+    relocate "org.apache.xml", "com.github.yuitosaito.libs.org.apache.xml"
+    relocate "org.apache.xmlcommons", "com.github.yuitosaito.libs.org.apache.xmlcommons"
+    relocate "org.apache.xmlgraphics", "com.github.yuitosaito.libs.org.apache.xmlgraphics"
+    relocate "org.apache.xpath", "com.github.yuitosaito.libs.org.apache.xpath"
+    relocate "org.w3c", "com.github.yuitosaito.libs.org.w3c"
+    //srgExtra "PK: org/w3c org/w3c"
+    //srgExtra "PK: org/xml/sax com/github/yuitosaito/libs/org/xml/sax"
+    //relocate  "PK: org/xml/sax org/xml/sax"
+    //srgExtra "PK: trax com/github/yuitosaito/libs/trax"
+    //relocate  "PK: trax trax"
+}
+
+jar {
+    configurations.shadow.each { dep ->
+        from(project.zipTree(dep)) {
+            exclude 'META-INF', 'META-INF/**', 'org/apache/batik/util/resources/XMLResourceDescriptor.properties'
+        }
+    }
+}
+jar.dependsOn shadowJar
+jar.enabled = false
+
+
+processResources
+        {
+            // this will ensure that this task is redone when the versions change.
+            inputs.property "version", project.version
+            inputs.property "mcversion", project.minecraft.version
+
+            // replace stuff in mcmod.info, nothing else
+            from(sourceSets.main.resources.srcDirs) {
+                include 'mcmod.info'
+
+                // replace version and mcversion
+                expand 'version': project.version, 'mcversion': project.minecraft.version
+            }
+
+            // copy everything else, thats not the mcmod.info
+            from(sourceSets.main.resources.srcDirs) {
+                exclude 'mcmod.info'
+            }
+        }

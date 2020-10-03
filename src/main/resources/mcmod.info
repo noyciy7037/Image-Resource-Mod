@@ -1,0 +1,22 @@
+[
+  {
+    "description": "Load an external file into Minecraft.",
+    "version": "${version}",
+    "modid": "resourcemod",
+    "mcversion": "1.7.10",
+    "screenshots": [],
+    "dependencies": [],
+    "modinfoversion": 2,
+    "logoFile": "assets/resourcemod/ResourceMod.png",
+    "credits": "",
+    "authorList": [
+      "yuito_3110"
+    ],
+    "useDependencyInformation": true,
+    "updateUrl": "",
+    "name": "ResourceMod",
+    "requiredMods": [
+      "Forge"
+    ]
+  }
+]
