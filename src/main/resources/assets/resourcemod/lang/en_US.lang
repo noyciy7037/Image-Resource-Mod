@@ -1,0 +1,10 @@
+# Resource Mod Language File (English)
+resourcemod.gui.ImageBlock=Image Block
+resourcemod.gui.ImageBlock.mode.0=Mode: Do Not Resize
+resourcemod.gui.ImageBlock.mode.1=Mode: Width Priority
+resourcemod.gui.ImageBlock.mode.2=Mode: Hight Priority
+resourcemod.gui.URL=URL
+resourcemod.gui.WidthSize=Width Size
+resourcemod.gui.HeightSize=Height Size
+tile.resourceBlockImage.name=Image Block
+itemGroup.ResourceTab=Resource Mod

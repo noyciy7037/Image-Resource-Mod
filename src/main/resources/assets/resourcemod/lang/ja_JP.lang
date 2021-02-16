@@ -1,0 +1,10 @@
+# Resource Mod 言語ファイル (日本語)
+resourcemod.gui.ImageBlock=画像ブロック
+resourcemod.gui.ImageBlock.mode.0=Mode: リサイズしない
+resourcemod.gui.ImageBlock.mode.1=Mode: 幅優先
+resourcemod.gui.ImageBlock.mode.2=Mode: 高さ優先
+resourcemod.gui.URL=URL
+resourcemod.gui.WidthSize=横幅
+resourcemod.gui.HeightSize=高さ
+tile.resourceBlockImage.name=画像ブロック
+itemGroup.ResourceTab=Resource Mod
