@@ -40,7 +40,11 @@ public class TileEntityBlockImage extends TileEntity {
     @SideOnly(Side.CLIENT)
     public ResourceLocation texture_dy;
     @SideOnly(Side.CLIENT)
+    public int texture_glID;
+    @SideOnly(Side.CLIENT)
     public ResourceLocation[] texture_dys;
+    @SideOnly(Side.CLIENT)
+    public int[] texture_glIDs;
     @SideOnly(Side.CLIENT)
     public int[] delays;
     @SideOnly(Side.CLIENT)
@@ -72,20 +76,27 @@ public class TileEntityBlockImage extends TileEntity {
             if (gi.getState().compareTo(Thread.State.TERMINATED) == 0) {
                 frame = 0;
                 if (texture_dy != null) {
-                    GL11.glDeleteTextures(texture_dy.hashCode());
+                    GL11.glDeleteTextures(texture_glID);
                     texture_dy = null;
+                    texture_glID = -1;
                 }
                 if (texture_dys != null) {
                     for (ResourceLocation textureDy : texture_dys) GL11.glDeleteTextures(textureDy.hashCode());
                     texture_dys = null;
+                    texture_glIDs = null;
                 }
                 if (image != null) {
-                    texture_dy = Minecraft.getMinecraft().getTextureManager().getDynamicTextureLocation("image", new DynamicTexture(image));
+                    DynamicTexture dynamicTexture = new DynamicTexture(image);
+                    texture_dy = Minecraft.getMinecraft().getTextureManager().getDynamicTextureLocation("image", dynamicTexture);
+                    texture_glID = dynamicTexture.getGlTextureId();
                     System.out.println(texture_dy.getResourceDomain());
                 } else if (images != null) {
                     texture_dys = new ResourceLocation[images.length];
+                    texture_glIDs = new int[images.length];
                     for (int i = 0; i < images.length; ++i) {
-                        texture_dys[i] = Minecraft.getMinecraft().getTextureManager().getDynamicTextureLocation("image", new DynamicTexture(images[i]));
+                        DynamicTexture dynamicTexture = new DynamicTexture(images[i]);
+                        texture_dys[i] = Minecraft.getMinecraft().getTextureManager().getDynamicTextureLocation("image", dynamicTexture);
+                        texture_glIDs[i] = dynamicTexture.getGlTextureId();
                     }
                 }
                 image = null;
@@ -109,12 +120,14 @@ public class TileEntityBlockImage extends TileEntity {
     public void onChunkUnload() {
         if (worldObj.isRemote) {
             if (texture_dy != null) {
-                GL11.glDeleteTextures(texture_dy.hashCode());
+                GL11.glDeleteTextures(texture_glID);
                 texture_dy = null;
+                texture_glID = -1;
             }
             if (texture_dys != null) {
-                for (ResourceLocation textureDy : texture_dys) GL11.glDeleteTextures(textureDy.hashCode());
+                for (int textureGLID : texture_glIDs) GL11.glDeleteTextures(textureGLID);
                 texture_dys = null;
+                texture_glIDs = null;
             }
         }
     }
@@ -209,6 +222,7 @@ public class TileEntityBlockImage extends TileEntity {
                     } else {
                         te.image = null;
                         te.texture_dy = null;
+                        te.texture_glID = -1;
                         images = new BufferedImage[g.getFrameCount()];
                         delays = new int[g.getFrameCount()];
                         for (int i = 0; i < images.length; ++i) {
@@ -244,7 +258,9 @@ public class TileEntityBlockImage extends TileEntity {
                 te.image = null;
                 te.images = null;
                 te.texture_dys = null;
+                te.texture_glIDs = null;
                 te.texture_dy = null;
+                te.texture_glID = -1;
                 te.delays = null;
                 te.delay = 0;
             }
