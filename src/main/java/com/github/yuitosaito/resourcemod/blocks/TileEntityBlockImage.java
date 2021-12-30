@@ -1,6 +1,6 @@
 package com.github.yuitosaito.resourcemod.blocks;
 
-import com.github.yuitosaito.resourcemod.image.GifDecoder;
+import com.github.yuitosaito.resourcemod.image.ImageLibrary;
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
 import net.minecraft.client.Minecraft;
@@ -14,11 +14,10 @@ import net.minecraft.util.AxisAlignedBB;
 import net.minecraft.util.ResourceLocation;
 import org.lwjgl.opengl.GL11;
 
-import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
-import java.io.IOException;
-import java.net.URL;
-import java.net.URLConnection;
+import java.net.MalformedURLException;
+
+import static java.lang.Thread.State.TERMINATED;
 
 public class TileEntityBlockImage extends TileEntity {
     public int heightSize = 1;
@@ -73,7 +72,7 @@ public class TileEntityBlockImage extends TileEntity {
             updateImage();
         }
         if (worldObj.isRemote && gi != null) {
-            if (gi.getState().compareTo(Thread.State.TERMINATED) == 0) {
+            if (gi.getState().compareTo(TERMINATED) == 0) {
                 frame = 0;
                 if (texture_dy != null) {
                     GL11.glDeleteTextures(texture_glID);
@@ -203,57 +202,53 @@ public class TileEntityBlockImage extends TileEntity {
         @Override
         public void run() {
             try {
-                URL url1 = new URL(url);
-                URLConnection connection = url1.openConnection();
-                String mimeType = connection.getContentType();
-                System.out.println(mimeType);
-                BufferedImage image;
-                BufferedImage[] images;
-                int[] delays;
-                /*if ("image/svg+xml".equals(mimeType)) {
-                    image = ImageTools.rasterize(connection.getInputStream());
-                } else */
-                if ("image/gif".equals(mimeType)) {
-                    GifDecoder g = new GifDecoder();
-                    g.read(connection.getInputStream());
-                    System.out.println(g.getFrameCount());
-                    if (g.getFrameCount() == 1) {
-                        image = ImageIO.read(connection.getInputStream());
-                    } else {
-                        te.image = null;
-                        te.texture_dy = null;
-                        te.texture_glID = -1;
-                        images = new BufferedImage[g.getFrameCount()];
-                        delays = new int[g.getFrameCount()];
-                        for (int i = 0; i < images.length; ++i) {
-                            BufferedImage ib = g.getFrame(i);
-                            delays[i] = g.getDelay(i);
-                            if (mode == RESIZE_MODE_HEIGHT_PRIORITY || mode == RESIZE_MODE_WIDTH_PRIORITY) {
-                                int width = mode == RESIZE_MODE_HEIGHT_PRIORITY ? ib.getHeight() * te.widthSize / te.heightSize : ib.getWidth();
-                                int height = mode == RESIZE_MODE_HEIGHT_PRIORITY ? ib.getHeight() : ib.getWidth() * te.heightSize / te.widthSize;
-                                images[i] = RenderTileEntityBlockImage.resizeImage(ib, width, height);
-                            } else {
-                                images[i] = RenderTileEntityBlockImage.resizeImage(ib, ib.getWidth(), ib.getHeight());
-                            }
-                        }
-                        te.delays = delays;
-                        te.images = images;
-                        return;
+                BufferedImage image = null;
+                BufferedImage[] images = null;
+                int[] delays = null;
+
+                ImageLibrary.ImageDataBase imageDataBase = ImageLibrary.bufferedImageMap.get(url);
+                if (imageDataBase == null) {
+                    ImageLibrary.GetOriginalImage thread = ImageLibrary.getOrStartOriginalImageGetter(url);
+                    try {
+                        thread.join();
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
                     }
-                } else {
-                    image = ImageIO.read(connection.getInputStream());
+                    imageDataBase = ImageLibrary.bufferedImageMap.get(url);
                 }
 
-                te.images = null;
-                if (mode == RESIZE_MODE_HEIGHT_PRIORITY || mode == RESIZE_MODE_WIDTH_PRIORITY) {
-                    int width = mode == RESIZE_MODE_HEIGHT_PRIORITY ? image.getHeight() * te.widthSize / te.heightSize : image.getWidth();
-                    int height = mode == RESIZE_MODE_HEIGHT_PRIORITY ? image.getHeight() : image.getWidth() * te.heightSize / te.widthSize;
-                    te.image = RenderTileEntityBlockImage.resizeImage(image, width, height);
-                } else {
-                    te.image = RenderTileEntityBlockImage.resizeImage(image, image.getWidth(), image.getHeight());
+                if (imageDataBase instanceof ImageLibrary.ImageDataSingle) {
+                    image = ((ImageLibrary.ImageDataSingle) imageDataBase).image;
+                } else if (imageDataBase instanceof ImageLibrary.ImageDataMulti) {
+                    ImageLibrary.ImageDataMulti imageDataMulti = ((ImageLibrary.ImageDataMulti) imageDataBase);
+                    images = imageDataMulti.images;
+                    delays = imageDataMulti.delays;
                 }
 
-            } catch (IOException | NullPointerException e) {
+                if (image != null) {
+                    te.images = null;
+                    if (mode == RESIZE_MODE_HEIGHT_PRIORITY || mode == RESIZE_MODE_WIDTH_PRIORITY) {
+                        int width = mode == RESIZE_MODE_HEIGHT_PRIORITY ? image.getHeight() * te.widthSize / te.heightSize : image.getWidth();
+                        int height = mode == RESIZE_MODE_HEIGHT_PRIORITY ? image.getHeight() : image.getWidth() * te.heightSize / te.widthSize;
+                        te.image = RenderTileEntityBlockImage.resizeImage(image, width, height);
+                    } else {
+                        te.image = RenderTileEntityBlockImage.resizeImage(image, image.getWidth(), image.getHeight());
+                    }
+                } else if (images != null && delays != null) {
+                    for (int i = 0; i < images.length; ++i) {
+                        BufferedImage ib = images[i];
+                        if (mode == RESIZE_MODE_HEIGHT_PRIORITY || mode == RESIZE_MODE_WIDTH_PRIORITY) {
+                            int width = mode == RESIZE_MODE_HEIGHT_PRIORITY ? ib.getHeight() * te.widthSize / te.heightSize : ib.getWidth();
+                            int height = mode == RESIZE_MODE_HEIGHT_PRIORITY ? ib.getHeight() : ib.getWidth() * te.heightSize / te.widthSize;
+                            images[i] = RenderTileEntityBlockImage.resizeImage(ib, width, height);
+                        } else {
+                            images[i] = RenderTileEntityBlockImage.resizeImage(ib, ib.getWidth(), ib.getHeight());
+                        }
+                    }
+                    te.delays = delays;
+                    te.images = images;
+                }
+            } catch (MalformedURLException | NullPointerException e) {
                 e.printStackTrace();
                 te.image = null;
                 te.images = null;
